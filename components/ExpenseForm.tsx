@@ -33,9 +33,12 @@ const expenseFormSchema = z.object({
   }),
 });
 
+// Define form input values type (pre-transformation)
+type ExpenseFormInputs = z.input<typeof expenseFormSchema>;
+// Define form values type after transformation
 type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
 
-const defaultValues: Partial<ExpenseFormValues> = {
+const defaultValues: Partial<ExpenseFormInputs> = {
   amount: '',
   description: '',
   category: '',
@@ -59,7 +62,7 @@ export default function ExpenseForm() {
     'Other'
   ];
 
-  const form = useForm<ExpenseFormValues>({
+  const form = useForm<ExpenseFormInputs>({
     resolver: zodResolver(expenseFormSchema),
     defaultValues,
   });
