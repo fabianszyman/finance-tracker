@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClientSupabaseClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,13 +9,14 @@ import { PlusCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Expense } from '@/types/expense';
 import { format } from 'date-fns';
+import { PostgrestError } from '@supabase/supabase-js';
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClientSupabaseClient();
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -24,20 +25,22 @@ export default function ExpensesPage() {
         .order('date', { ascending: false });
 
       if (error) {
-        throw error;
+        const pgError = error as PostgrestError;
+        throw pgError;
       }
 
       setExpenses(data || []);
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to fetch expenses');
+    } catch (error) {
+      const pgError = error as PostgrestError;
+      toast.error(pgError.message || 'Failed to fetch expenses');
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
 
   useEffect(() => {
     fetchExpenses();
-  }, []);
+  }, [fetchExpenses]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {

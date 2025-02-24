@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Auth from '@/components/Auth';
-import Profile from '@/components/Profile';
 import { createClientSupabaseClient } from '@/lib/supabase/client';
 import { Session } from '@/types/supabase';
 

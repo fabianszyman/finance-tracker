@@ -49,7 +49,7 @@ export default function Dashboard() {
     }
 
     fetchData();
-  }, []);
+  }, [supabase]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {

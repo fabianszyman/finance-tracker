@@ -13,10 +13,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PostgrestError } from '@supabase/supabase-js';
 
 // Schema for form validation
 const expenseFormSchema = z.object({
@@ -86,14 +87,16 @@ export default function ExpenseForm() {
       });
 
       if (error) {
-        throw error;
+        const pgError = error as PostgrestError;
+        throw pgError;
       }
 
       toast.success('Expense added successfully!');
       router.push('/expenses');
       router.refresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to add expense');
+    } catch (error) {
+      const pgError = error as PostgrestError;
+      toast.error(pgError.message || 'Failed to add expense');
     } finally {
       setIsLoading(false);
     }
