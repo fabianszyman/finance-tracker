@@ -10,15 +10,26 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 
+type LoginFormData = {
+  email: string;
+  password: string;
+};
+
+type SignupFormData = {
+  email: string;
+  password: string;
+  confirmPassword: string;
+};
+
 export default function Auth() {
   // Login form state
-  const [loginData, setLoginData] = useState({
+  const [loginData, setLoginData] = useState<LoginFormData>({
     email: '',
     password: '',
   });
   
   // Signup form state
-  const [signupData, setSignupData] = useState({
+  const [signupData, setSignupData] = useState<SignupFormData>({
     email: '',
     password: '',
     confirmPassword: '',
@@ -57,8 +68,9 @@ export default function Auth() {
 
       toast.success('Logged in successfully!');
       window.location.reload();
-    } catch (error: any) {
-      toast.error(error.message || 'An error occurred during login');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred during login';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -91,8 +103,9 @@ export default function Auth() {
       }
 
       toast.success('Check your email for a confirmation link!');
-    } catch (error: any) {
-      toast.error(error.message || 'An error occurred during signup');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred during signup';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

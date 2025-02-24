@@ -5,10 +5,11 @@ import { createClientSupabaseClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User as UserIcon } from 'lucide-react';
+import { User } from '@/types/supabase';
 
 export default function Profile() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClientSupabaseClient();
 
@@ -32,7 +33,7 @@ export default function Profile() {
       await supabase.auth.signOut();
       toast.success('Logged out successfully');
       window.location.reload();
-    } catch (error) {
+    } catch {
       toast.error('Error signing out');
     }
   };
@@ -58,7 +59,7 @@ export default function Profile() {
     <Card className="w-full max-w-md">
       <CardHeader className="flex flex-row items-center gap-4">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-          <User className="h-6 w-6 text-primary" />
+          <UserIcon className="h-6 w-6 text-primary" />
         </div>
         <div>
           <CardTitle>Profile</CardTitle>

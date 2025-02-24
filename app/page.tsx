@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import Auth from '@/components/Auth';
 import Profile from '@/components/Profile';
 import { createClientSupabaseClient } from '@/lib/supabase/client';
+import { Session } from '@/types/supabase';
 
 export default function Home() {
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClientSupabaseClient();
 
