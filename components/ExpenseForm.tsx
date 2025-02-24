@@ -18,14 +18,14 @@ import { toast } from 'sonner';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PostgrestError } from '@supabase/supabase-js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Schema for form validation
 const expenseFormSchema = z.object({
   amount: z
     .string()
     .min(1, 'Amount is required')
-    .refine((val) => !isNaN(parseFloat(val)), 'Must be a valid number')
-    .transform((val) => parseFloat(val)),
+    .refine((val) => !isNaN(parseFloat(val)), 'Must be a valid number'),
   description: z.string().optional(),
   category: z.string().min(1, 'Category is required'),
   date: z.date({
@@ -33,12 +33,11 @@ const expenseFormSchema = z.object({
   }),
 });
 
-// Define form input values type (pre-transformation)
-type ExpenseFormInputs = z.input<typeof expenseFormSchema>;
-// Define form values type after transformation
+// Define the type based directly on the schema without transformations
 type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
 
-const defaultValues: Partial<ExpenseFormInputs> = {
+// Default values matching the schema's expected types
+const defaultValues: Partial<ExpenseFormValues> = {
   amount: '',
   description: '',
   category: '',
@@ -62,39 +61,30 @@ export default function ExpenseForm() {
     'Other'
   ];
 
-  const form = useForm<ExpenseFormInputs>({
+  const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
     defaultValues,
   });
 
-  async function onSubmit(data: ExpenseFormValues) {
+  async function onSubmit(values: ExpenseFormValues) {
     setIsLoading(true);
     
     try {
-      // Get the current authenticated user
-      const { data: { user } } = await supabase.auth.getUser();
+      // Convert the amount string to a number for database storage
+      const numericAmount = parseFloat(values.amount);
       
-      if (!user) {
-        toast.error('You must be logged in to add an expense');
-        setIsLoading(false);
-        return;
-      }
-
-      // Insert expense into database with user_id
       const { error } = await supabase.from('expenses').insert({
-        user_id: user.id,
-        amount: data.amount,
-        description: data.description || '',
-        category: data.category,
-        date: data.date.toISOString(),
+        amount: numericAmount,
+        description: values.description || null, // Handle empty string
+        category: values.category,
+        date: values.date.toISOString(),
       });
 
       if (error) {
-        const pgError = error as PostgrestError;
-        throw pgError;
+        throw error;
       }
 
-      toast.success('Expense added successfully!');
+      toast.success('Expense added successfully');
       router.push('/expenses');
       router.refresh();
     } catch (error) {
@@ -147,19 +137,21 @@ export default function ExpenseForm() {
                 <FormItem>
                   <FormLabel>Category</FormLabel>
                   <FormControl>
-                    <select
+                    <Select
                       {...field}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <option value="" disabled>
-                        Select a category
-                      </option>
-                      {categories.map((category) => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
