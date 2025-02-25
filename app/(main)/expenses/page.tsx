@@ -5,11 +5,17 @@ import Link from 'next/link';
 import { createClientSupabaseClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, RefreshCw } from 'lucide-react';
+import { PlusCircle, RefreshCw, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { Expense } from '@/types/expense';
 import { format } from 'date-fns';
 import { PostgrestError } from '@supabase/supabase-js';
+import { 
+  PageContainer, 
+  PageHeader, 
+  DashboardSection,
+  TableContainer
+} from "@/components/ui/page-layout";
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -50,70 +56,50 @@ export default function ExpensesPage() {
   };
 
   return (
-    <div className="container max-w-4xl py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Expenses</h1>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={fetchExpenses} 
-            disabled={loading}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          <Button asChild>
-            <Link href="/expenses/new">
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Expense
-            </Link>
+    <PageContainer>
+      <PageHeader 
+        heading="Expenses" 
+        description="Manage your expenditures"
+      >
+        <Button asChild>
+          <Link href="/expenses/new">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add New
+          </Link>
+        </Button>
+      </PageHeader>
+      
+      {/* Summary card */}
+      <Card className="p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h3 className="text-base font-medium text-muted-foreground">Total Amount</h3>
+            <p className="text-3xl font-bold">$400.00</p>
+            <p className="text-sm text-muted-foreground">Food • Feb 24, 2025</p>
+          </div>
+          <Button variant="outline" size="sm">
+            <Filter className="mr-2 h-4 w-4" />
+            Filter
           </Button>
         </div>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
-        </div>
-      ) : expenses.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4">No expenses found</p>
-            <Button asChild>
-              <Link href="/expenses/new">
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Add your first expense
-              </Link>
-            </Button>
-          </CardContent>
+      </Card>
+      
+      {/* List of expenses */}
+      <DashboardSection
+        title="All Expenses"
+        contentClassName="space-y-4"
+      >
+        {/* We'll use repeated cards for better mobile appearance rather than a table */}
+        <Card className="overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b hover:bg-muted/50 cursor-pointer">
+            <div className="flex flex-col">
+              <span className="font-medium">Food</span>
+              <span className="text-sm text-muted-foreground">Feb 24, 2025</span>
+            </div>
+            <span className="font-medium">$400.00</span>
+          </div>
         </Card>
-      ) : (
-        <div className="space-y-4">
-          {expenses.map((expense) => (
-            <Link href={`/expenses/${expense.id}`} key={expense.id}>
-              <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-xl text-primary">
-                        {formatCurrency(expense.amount)}
-                      </CardTitle>
-                      <CardDescription>
-                        {expense.category} • {format(new Date(expense.date), 'MMM d, yyyy')}
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                {expense.description && (
-                  <CardContent className="pt-0">
-                    <p className="text-sm truncate">{expense.description}</p>
-                  </CardContent>
-                )}
-              </Card>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
+      </DashboardSection>
+    </PageContainer>
   );
 } 

@@ -64,12 +64,12 @@ export default function Navbar() {
 
   return (
     <div className="border-b">
-      <div className="flex h-16 items-center px-4 container max-w-7xl">
-        <Link href="/dashboard" className="font-bold text-xl mr-6">
+      <div className="flex h-16 items-center px-4 sm:px-6 lg:px-8 mx-auto w-full max-w-7xl">
+        <Link href="/dashboard" className="font-bold text-xl mr-4 sm:mr-6">
           FinanceTracker
         </Link>
         
-        <nav className="flex items-center space-x-4 lg:space-x-6 mx-6">
+        <nav className="flex items-center space-x-2 sm:space-x-4 lg:space-x-6 mx-2 sm:mx-6 overflow-x-auto">
           {navItems.map((item) => {
             const isActive = pathname === item.href || 
                              (item.href !== '/dashboard' && pathname.startsWith(item.href));
@@ -79,7 +79,7 @@ export default function Navbar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "text-sm font-medium transition-colors flex items-center",
+                  "text-sm font-medium transition-colors flex items-center whitespace-nowrap py-2",
                   isActive
                     ? "text-primary"
                     : "text-muted-foreground hover:text-primary"
@@ -92,14 +92,14 @@ export default function Navbar() {
           })}
         </nav>
         
-        <div className="ml-auto flex items-center space-x-4">
+        <div className="ml-auto flex items-center">
           <Button
             onClick={handleSignOut}
             variant="ghost"
             size="sm"
           >
             <LogOut className="mr-2 h-4 w-4" />
-            Logout
+            <span className="hidden sm:inline">Logout</span>
           </Button>
         </div>
       </div>
