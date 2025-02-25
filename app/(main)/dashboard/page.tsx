@@ -1,7 +1,8 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, DollarSign, Calendar, TrendingDown, TrendingUp } from "lucide-react";
+import { PlusCircle, DollarSign, Calendar, TrendingDown, TrendingUp, ArrowUpRight, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { 
   PageContainer, 
@@ -12,11 +13,117 @@ import {
   TableContainer
 } from "@/components/ui/page-layout";
 import { format } from "date-fns";
+import { createClientSupabaseClient } from '@/lib/supabase/client';
+import { formatCurrency } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+// Interface for expense data
+interface Expense {
+  id: string;
+  amount: number;
+  category: string;
+  description: string;
+  date: string;
+  created_at: string;
+}
+
+// Interface for summary statistics
+interface ExpenseStats {
+  totalExpenses: number;
+  averageExpense: number;
+  largestExpense: number;
+  recentTotal: number;
+  categorySummary: {
+    [key: string]: number;
+  };
+}
+
+// Avoid hydration mismatches by using a loading state
 export default function DashboardPage() {
-  // Get the current month name
-  const currentMonth = format(new Date(), 'MMMM yyyy');
-  
+  // Start with loading state to avoid hydration mismatch
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<ExpenseStats>({
+    totalExpenses: 0,
+    averageExpense: 0,
+    largestExpense: 0,
+    recentTotal: 0,
+    categorySummary: {}
+  });
+  const supabase = createClientSupabaseClient();
+
+  // Use a useEffect to load data only on the client side
+  useEffect(() => {
+    async function fetchExpenseData() {
+      try {
+        // Get all expenses for the current user
+        const { data: expenses, error } = await supabase
+          .from('expenses')
+          .select('*')
+          .order('date', { ascending: false });
+
+        if (error) throw error;
+
+        // Calculate statistics from the expense data
+        if (expenses && expenses.length > 0) {
+          // Total of all expenses
+          const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+          
+          // Average expense amount
+          const averageExpense = totalExpenses / expenses.length;
+          
+          // Largest single expense
+          const largestExpense = Math.max(...expenses.map(expense => expense.amount));
+          
+          // Get expenses from the current month - STORE DATE ONCE
+          const now = new Date();
+          const currentYear = now.getFullYear();
+          const currentMonth = now.getMonth();
+          const startOfMonth = new Date(currentYear, currentMonth, 1).toISOString();
+          
+          const recentExpenses = expenses.filter(expense => expense.date >= startOfMonth);
+          const recentTotal = recentExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+          
+          // Group expenses by category
+          const categorySummary = expenses.reduce((acc, expense) => {
+            const category = expense.category || 'Uncategorized';
+            if (!acc[category]) acc[category] = 0;
+            acc[category] += expense.amount;
+            return acc;
+          }, {} as {[key: string]: number});
+          
+          setStats({
+            totalExpenses,
+            averageExpense,
+            largestExpense,
+            recentTotal,
+            categorySummary
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching expense data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchExpenseData();
+  }, [supabase]);
+
+  // Get top 3 categories by expense amount
+  const topCategories = Object.entries(stats.categorySummary)
+    .sort(([, a], [, b]) => (b as number) - (a as number))
+    .slice(0, 3);
+
+  // While loading, show skeleton state or placeholder
+  if (loading) {
+    return (
+      <PageContainer>
+        <PageHeader heading="Dashboard" description="Loading your financial overview..." />
+        {/* You could add skeleton loading UI here */}
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer>
       <PageHeader 
@@ -33,51 +140,54 @@ export default function DashboardPage() {
       
       {/* Financial metrics overview */}
       <DashboardSection 
-        title="Financial Summary" 
-        subtitle={`Overview for ${currentMonth}`}
+        title="Summary" 
+        subtitle="Your expense overview"
       >
         <CardGrid>
           <MetricCard
-            title="Total Spending"
-            value="$400.00"
-            description="Since February 1"
+            title="Total Expenses"
+            value={formatCurrency(stats.totalExpenses)}
+            description="All-time total spent"
             icon={<DollarSign />}
-            trend={{ value: 12, positive: false }}
+            className="sm:col-span-2"
           />
           <MetricCard
-            title="Average Per Day"
-            value="$13.33"
-            description="30-day average"
+            title="This Month"
+            value={formatCurrency(stats.recentTotal)}
+            description="Spent since beginning of month"
             icon={<Calendar />}
           />
           <MetricCard
-            title="Top Category"
-            value="Food"
-            description="40% of total spending"
-            icon={<TrendingUp />}
+            title="Average Expense"
+            value={formatCurrency(stats.averageExpense)}
+            description="Average per transaction"
+            icon={<TrendingDown />}
+          />
+          <MetricCard
+            title="Largest Expense"
+            value={formatCurrency(stats.largestExpense)}
+            description="Your biggest transaction"
+            icon={<CreditCard />}
           />
         </CardGrid>
       </DashboardSection>
       
-      {/* Recent expenses */}
+      {/* Top categories */}
       <DashboardSection
-        title="Recent Expenses"
-        subtitle="Your latest transactions"
-        action={
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/expenses">View all</Link>
-          </Button>
-        }
+        title="Top Categories"
+        subtitle="Where you spend the most"
       >
-        <div className="rounded-lg border bg-card">
-          <div className="flex items-center justify-between p-4 border-b">
-            <div className="flex flex-col">
-              <span className="font-medium">Food</span>
-              <span className="text-sm text-muted-foreground">Feb 24, 2025</span>
-            </div>
-            <span className="font-medium">$400.00</span>
-          </div>
-        </div>
+        <CardGrid className="grid-cols-1 sm:grid-cols-3">
+          {topCategories.map(([category, amount]) => (
+            <MetricCard
+              key={category}
+              title={category as string}
+              value={formatCurrency(amount as number)}
+              description={`${(((amount as number) / stats.totalExpenses) * 100).toFixed(1)}% of total`}
+              icon={<ArrowUpRight />}
+            />
+          ))}
+        </CardGrid>
       </DashboardSection>
     </PageContainer>
   );
