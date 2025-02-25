@@ -73,11 +73,19 @@ export default function ExpenseForm() {
       // Convert the amount string to a number for database storage
       const numericAmount = parseFloat(values.amount);
       
+      // Get the current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('You must be logged in to add an expense');
+      }
+      
       const { error } = await supabase.from('expenses').insert({
         amount: numericAmount,
         description: values.description || null, // Handle empty string
         category: values.category,
         date: values.date.toISOString(),
+        user_id: user.id, // Add the user ID to associate this expense with the current user
       });
 
       if (error) {
@@ -137,20 +145,36 @@ export default function ExpenseForm() {
                 <FormItem>
                   <FormLabel>Category</FormLabel>
                   <FormControl>
-                    <Select
-                      {...field}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a category" />
-                      </SelectTrigger>
-                      <SelectContent>
+                    <div className="relative border rounded-md">
+                      <select
+                        className="w-full h-9 px-3 py-2 bg-transparent appearance-none focus:outline-none"
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                      >
+                        <option value="" disabled>Select a category</option>
                         {categories.map((category) => (
-                          <SelectItem key={category} value={category}>
+                          <option key={category} value={category}>
                             {category}
-                          </SelectItem>
+                          </option>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="opacity-50"
+                        >
+                          <path d="m6 9 6 6 6-6"/>
+                        </svg>
+                      </div>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

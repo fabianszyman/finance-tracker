@@ -1,104 +1,118 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
-import { createClientSupabaseClient } from '@/lib/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { PageContainer, PageHeader, DashboardSection, TableContainer } from '@/components/ui/page-layout';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, RefreshCw, Filter } from 'lucide-react';
-import { toast } from 'sonner';
-import { Expense } from '@/types/expense';
-import { format } from 'date-fns';
-import { PostgrestError } from '@supabase/supabase-js';
-import { 
-  PageContainer, 
-  PageHeader, 
-  DashboardSection,
-  TableContainer
-} from "@/components/ui/page-layout";
+import { Plus } from 'lucide-react';
+import { createClientSupabaseClient } from '@/lib/supabase/client';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+
+interface Expense {
+  id: string;
+  amount: number;
+  category: string;
+  description: string;
+  date: string;
+  created_at: string;
+}
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
   const supabase = createClientSupabaseClient();
 
-  const fetchExpenses = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .select('*')
-        .order('date', { ascending: false });
+  useEffect(() => {
+    async function fetchExpenses() {
+      try {
+        const { data, error } = await supabase
+          .from('expenses')
+          .select('*')
+          .order('date', { ascending: false });
 
-      if (error) {
-        const pgError = error as PostgrestError;
-        throw pgError;
+        if (error) throw error;
+        setExpenses(data || []);
+      } catch (error) {
+        console.error('Error fetching expenses:', error);
+      } finally {
+        setLoading(false);
       }
-
-      setExpenses(data || []);
-    } catch (error) {
-      const pgError = error as PostgrestError;
-      toast.error(pgError.message || 'Failed to fetch expenses');
-    } finally {
-      setLoading(false);
     }
+
+    fetchExpenses();
   }, [supabase]);
 
-  useEffect(() => {
-    fetchExpenses();
-  }, [fetchExpenses]);
+  // Navigate to expense details page
+  const handleExpenseClick = (id: string) => {
+    router.push(`/expenses/${id}`);
+  };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+  // Navigate to add expense page
+  const handleAddExpense = () => {
+    router.push('/expenses/new');
   };
 
   return (
     <PageContainer>
       <PageHeader 
         heading="Expenses" 
-        description="Manage your expenditures"
+        description="View and manage your expenses"
       >
-        <Button asChild>
-          <Link href="/expenses/new">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add New
-          </Link>
+        <Button onClick={handleAddExpense}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Expense
         </Button>
       </PageHeader>
-      
-      {/* Summary card */}
-      <Card className="p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h3 className="text-base font-medium text-muted-foreground">Total Amount</h3>
-            <p className="text-3xl font-bold">$400.00</p>
-            <p className="text-sm text-muted-foreground">Food • Feb 24, 2025</p>
-          </div>
-          <Button variant="outline" size="sm">
-            <Filter className="mr-2 h-4 w-4" />
-            Filter
-          </Button>
-        </div>
-      </Card>
-      
-      {/* List of expenses */}
-      <DashboardSection
-        title="All Expenses"
-        contentClassName="space-y-4"
+
+      <DashboardSection 
+        title="All Expenses" 
+        subtitle="Click on an expense to view details"
       >
-        {/* We'll use repeated cards for better mobile appearance rather than a table */}
-        <Card className="overflow-hidden">
-          <div className="flex items-center justify-between p-4 border-b hover:bg-muted/50 cursor-pointer">
-            <div className="flex flex-col">
-              <span className="font-medium">Food</span>
-              <span className="text-sm text-muted-foreground">Feb 24, 2025</span>
-            </div>
-            <span className="font-medium">$400.00</span>
-          </div>
-        </Card>
+        <TableContainer>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="py-3 px-4 text-left font-medium">Date</th>
+                <th className="py-3 px-4 text-left font-medium">Category</th>
+                <th className="py-3 px-4 text-left font-medium">Description</th>
+                <th className="py-3 px-4 text-right font-medium">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                Array(5).fill(0).map((_, index) => (
+                  <tr key={index} className="border-b">
+                    <td className="py-3 px-4"><Skeleton className="h-5 w-24" /></td>
+                    <td className="py-3 px-4"><Skeleton className="h-5 w-20" /></td>
+                    <td className="py-3 px-4"><Skeleton className="h-5 w-40" /></td>
+                    <td className="py-3 px-4 text-right"><Skeleton className="h-5 w-16 ml-auto" /></td>
+                  </tr>
+                ))
+              ) : expenses.length > 0 ? (
+                expenses.map((expense) => (
+                  <tr 
+                    key={expense.id} 
+                    className="border-b cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => handleExpenseClick(expense.id)}
+                  >
+                    <td className="py-3 px-4">{formatDate(expense.date)}</td>
+                    <td className="py-3 px-4">{expense.category}</td>
+                    <td className="py-3 px-4">{expense.description || '-'}</td>
+                    <td className="py-3 px-4 text-right font-medium">{formatCurrency(expense.amount)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-muted-foreground">
+                    No expenses found. Add your first expense!
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </TableContainer>
       </DashboardSection>
     </PageContainer>
   );

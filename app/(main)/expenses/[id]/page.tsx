@@ -1,29 +1,45 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClientSupabaseClient } from '@/lib/supabase/client';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { PageContainer, PageHeader } from '@/components/ui/page-layout';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Trash } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
+import { createClientSupabaseClient } from '@/lib/supabase/client';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Expense } from '@/types/expense';
-import { format } from 'date-fns';
-import { PostgrestError } from '@supabase/supabase-js';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog';
 
-export default function ExpenseDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
-  const params = use(paramsPromise);
-  const expenseId = params.id;
-  
+interface Expense {
+  id: string;
+  amount: number;
+  category: string;
+  description: string;
+  date: string;
+  created_at: string;
+}
+
+export default function ExpenseDetailsPage() {
   const [expense, setExpense] = useState<Expense | null>(null);
   const [loading, setLoading] = useState(true);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const router = useRouter();
+  const params = useParams();
+  const expenseId = params.id as string;
   const supabase = createClientSupabaseClient();
 
   useEffect(() => {
-    async function fetchExpense() {
-      setLoading(true);
+    async function fetchExpenseDetails() {
       try {
         const { data, error } = await supabase
           .from('expenses')
@@ -34,28 +50,19 @@ export default function ExpenseDetailPage({ params: paramsPromise }: { params: P
         if (error) throw error;
         setExpense(data);
       } catch (error) {
-        const pgError = error as PostgrestError;
-        toast.error(pgError.message || 'Failed to fetch expense details');
-        router.push('/expenses');
+        console.error('Error fetching expense details:', error);
+        toast.error('Failed to load expense details');
       } finally {
         setLoading(false);
       }
     }
 
-    fetchExpense();
-  }, [expenseId, router, supabase]);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
+    if (expenseId) {
+      fetchExpenseDetails();
+    }
+  }, [expenseId, supabase]);
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this expense?')) return;
-    
-    setDeleteLoading(true);
     try {
       const { error } = await supabase
         .from('expenses')
@@ -63,84 +70,141 @@ export default function ExpenseDetailPage({ params: paramsPromise }: { params: P
         .eq('id', expenseId);
 
       if (error) throw error;
+      
       toast.success('Expense deleted successfully');
       router.push('/expenses');
     } catch (error) {
-      const pgError = error as PostgrestError;
-      toast.error(pgError.message || 'Failed to delete expense');
+      console.error('Error deleting expense:', error);
+      toast.error('Failed to delete expense');
     } finally {
-      setDeleteLoading(false);
+      setDeleteDialogOpen(false);
     }
+  };
+
+  const handleEdit = () => {
+    router.push(`/expenses/edit/${expenseId}`);
+  };
+
+  const handleBack = () => {
+    router.back();
   };
 
   if (loading) {
     return (
-      <div className="container max-w-4xl py-8">
-        <div className="flex justify-center items-center h-40">
-          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
-        </div>
-      </div>
+      <PageContainer>
+        <PageHeader heading="Expense Details">
+          <Button variant="outline" onClick={handleBack}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+        </PageHeader>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-7 w-40" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-6 w-1/2" />
+          </CardContent>
+        </Card>
+      </PageContainer>
     );
   }
 
   if (!expense) {
     return (
-      <div className="container max-w-4xl py-8">
+      <PageContainer>
+        <PageHeader heading="Expense Details">
+          <Button variant="outline" onClick={handleBack}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+        </PageHeader>
         <Card>
-          <CardContent className="py-8">
-            <p className="text-center text-muted-foreground">Expense not found</p>
+          <CardContent className="py-10 text-center">
+            <p className="text-muted-foreground">Expense not found</p>
+            <Button 
+              variant="outline" 
+              className="mt-4" 
+              onClick={() => router.push('/expenses')}
+            >
+              Go back to all expenses
+            </Button>
           </CardContent>
         </Card>
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="container max-w-4xl py-8">
-      <div className="mb-4">
-        <Button variant="ghost" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-      </div>
-      
+    <PageContainer>
+      <PageHeader heading="Expense Details">
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleBack}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <Button variant="outline" onClick={handleEdit}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </Button>
+          <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="destructive">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete Expense</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete this expense? This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleDelete}>
+                  Delete
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </PageHeader>
+
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <CardTitle className="text-xl">{formatCurrency(expense.amount)}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <CardTitle className="text-2xl text-primary">
-                {formatCurrency(expense.amount)}
-              </CardTitle>
-              <CardDescription>
-                {format(new Date(expense.date), 'MMMM d, yyyy')}
-              </CardDescription>
+              <h3 className="text-sm font-medium text-muted-foreground">Category</h3>
+              <p className="text-base font-medium">{expense.category}</p>
             </div>
-            <div className="px-4 py-2 bg-accent/50 rounded-full">
-              {expense.category}
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Date</h3>
+              <p className="text-base font-medium">{formatDate(expense.date)}</p>
             </div>
           </div>
-        </CardHeader>
-        
-        {expense.description && (
-          <CardContent>
-            <div className="space-y-2">
-              <h3 className="font-medium">Description</h3>
-              <p>{expense.description}</p>
+          
+          {expense.description && (
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Description</h3>
+              <p className="text-base">{expense.description}</p>
             </div>
-          </CardContent>
-        )}
-        
-        <CardFooter className="flex justify-end gap-4 pt-6">
-          <Button 
-            variant="destructive" 
-            onClick={handleDelete} 
-            disabled={deleteLoading}
-          >
-            <Trash className="mr-2 h-4 w-4" />
-            {deleteLoading ? 'Deleting...' : 'Delete'}
-          </Button>
-        </CardFooter>
+          )}
+          
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground">Added On</h3>
+            <p className="text-sm">{formatDate(expense.created_at, true)}</p>
+          </div>
+        </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 } 
