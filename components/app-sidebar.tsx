@@ -72,7 +72,7 @@ export function AppSidebar({ className, ...props }: React.ComponentProps<typeof 
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton
                     tooltip={!isMobile ? item.title : undefined}
-                    active={pathname === item.url ? "true" : undefined}
+                    isActive={pathname === item.url ? true : undefined}
                     onClick={() => handleNavigation(item.url)}
                   >
                     <div className="flex items-center gap-2">
