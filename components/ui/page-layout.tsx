@@ -31,7 +31,7 @@ export function PageHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col-reverse gap-y-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-y-3">
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{heading}</h1>
         {description && (
@@ -39,7 +39,7 @@ export function PageHeader({
         )}
       </div>
       {children && (
-        <div className="flex flex-shrink-0 items-center gap-2">
+        <div className="flex flex-shrink-0 items-center self-end sm:self-auto gap-2">
           {children}
         </div>
       )}

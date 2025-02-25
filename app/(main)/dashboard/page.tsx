@@ -130,12 +130,14 @@ export default function DashboardPage() {
         heading="Dashboard" 
         description="Your financial overview"
       >
-        <Button asChild>
-          <Link href="/expenses/new">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Expense
-          </Link>
-        </Button>
+        <div className="ml-auto mt-2 sm:mt-0">
+          <Button asChild>
+            <Link href="/expenses/new">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Expense
+            </Link>
+          </Button>
+        </div>
       </PageHeader>
       
       {/* Financial metrics overview */}
