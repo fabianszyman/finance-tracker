@@ -52,7 +52,7 @@ export function AppSidebar({ className, ...props }: React.ComponentProps<typeof 
   // Group navigation items
   const navItems = [
     {
-      title: "Main",
+      title: "",
       items: [
         { title: "Dashboard", url: "/dashboard", icon: Home },
         { title: "Expenses", url: "/expenses", icon: Receipt },

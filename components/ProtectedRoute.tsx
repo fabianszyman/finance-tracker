@@ -17,7 +17,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
       
       // If no session exists, redirect to login page
       if (!data.session) {
-        router.push('/');
+        router.push('/login');
         return;
       }
       
