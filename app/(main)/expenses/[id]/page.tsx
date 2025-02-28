@@ -19,6 +19,7 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
 interface Expense {
   id: string;
@@ -27,6 +28,7 @@ interface Expense {
   description: string;
   date: string;
   created_at: string;
+  category_details: string[] | null;
 }
 
 export default function ExpenseDetailsPage() {
@@ -183,8 +185,22 @@ export default function ExpenseDetailsPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Category</h3>
-              <p className="text-base font-medium">{expense.category}</p>
+              <h3 className="text-sm font-medium text-muted-foreground">Categories</h3>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {expense.category_details && expense.category_details.length > 0 ? (
+                  expense.category_details.map((cat, index) => {
+                    const [group, item] = cat.split(': ');
+                    return (
+                      <Badge key={index} variant="secondary">
+                        <span className="font-medium mr-1">{group}:</span>
+                        {item || group}
+                      </Badge>
+                    );
+                  })
+                ) : (
+                  <p className="text-base font-medium">{expense.category}</p>
+                )}
+              </div>
             </div>
             <div>
               <h3 className="text-sm font-medium text-muted-foreground">Date</h3>

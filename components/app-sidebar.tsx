@@ -113,7 +113,6 @@ export function AppSidebar({ className, ...props }: React.ComponentProps<typeof 
       <SidebarHeader>
         <div className="flex items-center px-2 py-4">
           <Link href="/dashboard" className="font-bold text-xl text-sidebar-foreground">
-            FinanceTracker
           </Link>
         </div>
       </SidebarHeader>

@@ -8,11 +8,14 @@ import { Plus } from 'lucide-react';
 import { createClientSupabaseClient } from '@/lib/supabase/client';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface Expense {
   id: string;
   amount: number;
   category: string;
+  category_details: string[] | null;
   description: string;
   date: string;
   created_at: string;
@@ -27,9 +30,16 @@ export default function ExpensesPage() {
   useEffect(() => {
     async function fetchExpenses() {
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
         const { data, error } = await supabase
           .from('expenses')
           .select('*')
+          .eq('user_id', user.id)
           .order('date', { ascending: false });
 
         if (error) throw error;
@@ -82,33 +92,61 @@ export default function ExpensesPage() {
             </thead>
             <tbody>
               {loading ? (
-                Array(5).fill(0).map((_, index) => (
+                Array.from({ length: 5 }).map((_, index) => (
                   <tr key={index} className="border-b">
                     <td className="py-3 px-4"><Skeleton className="h-5 w-24" /></td>
                     <td className="py-3 px-4"><Skeleton className="h-5 w-20" /></td>
-                    <td className="py-3 px-4"><Skeleton className="h-5 w-40" /></td>
+                    <td className="py-3 px-4"><Skeleton className="h-5 w-36" /></td>
                     <td className="py-3 px-4 text-right"><Skeleton className="h-5 w-16 ml-auto" /></td>
                   </tr>
                 ))
-              ) : expenses.length > 0 ? (
+              ) : expenses.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-muted-foreground">
+                    No expenses found. Add your first expense to get started.
+                  </td>
+                </tr>
+              ) : (
                 expenses.map((expense) => (
                   <tr 
                     key={expense.id} 
-                    className="border-b cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
                     onClick={() => handleExpenseClick(expense.id)}
                   >
                     <td className="py-3 px-4">{formatDate(expense.date)}</td>
-                    <td className="py-3 px-4">{expense.category}</td>
-                    <td className="py-3 px-4">{expense.description || '-'}</td>
-                    <td className="py-3 px-4 text-right font-medium">{formatCurrency(expense.amount)}</td>
+                    <td className="py-3 px-4">
+                      {expense.category_details && expense.category_details.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {/* Show first category in full */}
+                          {(() => {
+                            const [group, item] = expense.category_details[0].split(': ');
+                            return (
+                              <Badge key="primary" variant="secondary" className="whitespace-nowrap">
+                                <span className="font-medium mr-1">{group}:</span>
+                                {item || group}
+                              </Badge>
+                            );
+                          })()}
+                          
+                          {/* Show count if more than one category */}
+                          {expense.category_details.length > 1 && (
+                            <Badge variant="outline" className="bg-background">
+                              +{expense.category_details.length - 1}
+                            </Badge>
+                          )}
+                        </div>
+                      ) : (
+                        <span>{expense.category}</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-ellipsis overflow-hidden max-w-[200px]">
+                      {expense.description || "-"}
+                    </td>
+                    <td className="py-3 px-4 text-right font-medium">
+                      {formatCurrency(expense.amount)}
+                    </td>
                   </tr>
                 ))
-              ) : (
-                <tr>
-                  <td colSpan={4} className="py-6 text-center text-muted-foreground">
-                    No expenses found. Add your first expense!
-                  </td>
-                </tr>
               )}
             </tbody>
           </table>

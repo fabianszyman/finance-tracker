@@ -4,6 +4,7 @@ export type Expense = {
   amount: number;
   description: string;
   category: string;
+  category_details: string[] | null;
   date: string;
   created_at: string;
   updated_at: string;

@@ -8,6 +8,7 @@ export type Database = {
           amount: number;
           description: string;
           category: string;
+          category_details: string[] | null;
           date: string;
           created_at: string;
           updated_at: string;
@@ -18,6 +19,7 @@ export type Database = {
           amount: number;
           description?: string;
           category?: string;
+          category_details?: string[] | null;
           date?: string;
           created_at?: string;
           updated_at?: string;
@@ -28,6 +30,7 @@ export type Database = {
           amount?: number;
           description?: string;
           category?: string;
+          category_details?: string[] | null;
           date?: string;
           created_at?: string;
           updated_at?: string;

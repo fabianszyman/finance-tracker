@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,19 +15,159 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Check, ChevronsUpDown, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PostgrestError } from '@supabase/supabase-js';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import React from 'react';
+import { Badge } from "@/components/ui/badge";
+import { Command as CommandPrimitive } from "cmdk";
 
-// Schema for form validation
+// Define categories
+const categories = {
+  Food: [
+    'Groceries',
+    'Restaurants',
+    'Fast Food',
+    'Coffee Shops',
+    'Food Delivery',
+    'Snacks'
+  ],
+  Transportation: [
+    'Public Transit',
+    'Ride Sharing',
+    'Fuel',
+    'Parking',
+    'Vehicle Maintenance',
+    'Car Payment',
+    'Car Insurance'
+  ],
+  Housing: [
+    'Rent/Mortgage',
+    'Utilities',
+    'Maintenance',
+    'Furniture',
+    'Home Supplies',
+    'Insurance'
+  ],
+  Healthcare: [
+    'Doctor Visits',
+    'Medication',
+    'Insurance',
+    'Fitness',
+    'Mental Health'
+  ],
+  Personal: [
+    'Clothing',
+    'Beauty',
+    'Electronics',
+    'Gifts',
+    'Subscriptions'
+  ],
+  Entertainment: [
+    'Movies',
+    'Games',
+    'Books',
+    'Concerts',
+    'Streaming Services',
+    'Hobbies'
+  ],
+  Education: [
+    'Tuition',
+    'Books',
+    'Courses',
+    'School Supplies'
+  ],
+  Financial: [
+    'Investments',
+    'Debt Payments',
+    'Banking Fees',
+    'Taxes'
+  ],
+  Other: [
+    'Miscellaneous',
+    'Charity',
+    'Gifts'
+  ]
+};
+
+// Flatten categories for search functionality
+const flattenedCategories = Object.entries(categories).flatMap(
+  ([group, items]) => items.map(item => ({ 
+    value: `${group}: ${item}`, 
+    label: item, 
+    group 
+  }))
+);
+
+// Synonym mapping for search terms
+const categorySearchSynonyms: Record<string, string[]> = {
+  // Food related
+  "cafe": ["Coffee Shops"],
+  "coffee": ["Coffee Shops"],
+  "restaurant": ["Restaurants"],
+  "dining": ["Restaurants"],
+  "takeout": ["Food Delivery", "Fast Food"],
+  "delivery": ["Food Delivery"],
+  "grocery": ["Groceries"],
+  "supermarket": ["Groceries"],
+  
+  // Transportation related
+  "gas": ["Fuel"],
+  "petrol": ["Fuel"],
+  "uber": ["Ride Sharing"],
+  "lyft": ["Ride Sharing"],
+  "taxi": ["Ride Sharing"],
+  "bus": ["Public Transit"],
+  "train": ["Public Transit"],
+  "subway": ["Public Transit"],
+  "metro": ["Public Transit"],
+  "car": ["Vehicle Maintenance", "Car Payment", "Car Insurance"],
+  
+  // Housing related
+  "rent": ["Rent/Mortgage"],
+  "mortgage": ["Rent/Mortgage"],
+  "electricity": ["Utilities"],
+  "water": ["Utilities"],
+  "internet": ["Utilities"],
+  "repair": ["Maintenance"],
+  "decor": ["Furniture", "Home Supplies"],
+  
+  // Healthcare related
+  "doctor": ["Doctor Visits"],
+  "hospital": ["Doctor Visits"],
+  "medicine": ["Medication"],
+  "prescription": ["Medication"],
+  "gym": ["Fitness"],
+  "therapist": ["Mental Health"],
+  "counseling": ["Mental Health"],
+  
+  // Entertainment related
+  "netflix": ["Streaming Services"],
+  "hulu": ["Streaming Services"],
+  "spotify": ["Streaming Services"],
+  "movie": ["Movies"],
+  "concert": ["Concerts"],
+  "show": ["Concerts", "Movies"],
+  "game": ["Games"],
+  "hobby": ["Hobbies"],
+  
+  // General
+  "bill": ["Utilities", "Debt Payments"],
+  "subscription": ["Subscriptions", "Streaming Services"],
+  "gift": ["Gifts"],
+  "donation": ["Charity"]
+};
+
+// Update the form schema to handle multiple categories
 const expenseFormSchema = z.object({
   amount: z
     .string()
     .min(1, 'Amount is required')
     .refine((val) => !isNaN(parseFloat(val)), 'Must be a valid number'),
   description: z.string().optional(),
-  category: z.string().min(1, 'Category is required'),
+  // Change to array of strings
+  categories: z.array(z.string()).min(1, 'At least one category is required'),
   date: z.date({
     required_error: 'Please select a date',
   }),
@@ -36,35 +176,230 @@ const expenseFormSchema = z.object({
 // Define the type based directly on the schema without transformations
 type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
 
-// Default values matching the schema's expected types
+// Default values with empty array for categories
 const defaultValues: Partial<ExpenseFormValues> = {
   amount: '',
   description: '',
-  category: '',
+  categories: [],
   date: new Date(),
 };
+
+// Define type for category object
+type CategoryItem = {
+  value: string;
+  label: string;
+  group: string;
+};
+
+// Create flattened category list
+const CATEGORY_ITEMS: CategoryItem[] = Object.entries(categories).flatMap(
+  ([group, items]) => items.map(item => ({ 
+    value: `${group}: ${item}`, 
+    label: item, 
+    group
+  }))
+);
+
+// Enhance the filtering logic in your component
+// This function can be used to search with synonym support
+function searchWithSynonyms(query: string, categoryItems: CategoryItem[]): CategoryItem[] {
+  if (!query.trim()) return categoryItems;
+  
+  const normalizedQuery = query.toLowerCase().trim();
+  console.log("Normalized query:", normalizedQuery);
+  
+  // Direct matches in categories
+  const directMatches = categoryItems.filter(item => 
+    item.label.toLowerCase().includes(normalizedQuery) || 
+    item.group.toLowerCase().includes(normalizedQuery) ||
+    item.value.toLowerCase().includes(normalizedQuery)
+  );
+  
+  // If we have direct matches, return them
+  if (directMatches.length > 0) {
+    console.log("Direct matches found:", directMatches.length);
+    return directMatches;
+  }
+  
+  // Check for synonym matches
+  const synonymMatches = new Set<CategoryItem>();
+  
+  // Log for debugging
+  console.log("Checking synonyms for:", normalizedQuery);
+  console.log("Synonym keys:", Object.keys(categorySearchSynonyms));
+  
+  // Check if the query is a key in our synonym map
+  if (categorySearchSynonyms[normalizedQuery]) {
+    console.log(`Found synonym entry for "${normalizedQuery}":`, categorySearchSynonyms[normalizedQuery]);
+    categorySearchSynonyms[normalizedQuery].forEach(synonym => {
+      categoryItems.forEach(item => {
+        // Broaden matching to ensure it catches relevant categories
+        if (item.label.toLowerCase() === synonym.toLowerCase() || 
+            item.value.toLowerCase().includes(synonym.toLowerCase()) ||
+            synonym.toLowerCase().includes(item.label.toLowerCase())) {
+          synonymMatches.add(item);
+        }
+      });
+    });
+  }
+  
+  // Also check partial matches in the synonym keys
+  Object.entries(categorySearchSynonyms).forEach(([key, synonyms]) => {
+    if (key.includes(normalizedQuery) || normalizedQuery.includes(key)) {
+      console.log(`Found partial match in synonym key "${key}":`, synonyms);
+      synonyms.forEach(synonym => {
+        categoryItems.forEach(item => {
+          if (item.label.toLowerCase() === synonym.toLowerCase() || 
+              item.value.toLowerCase().includes(synonym.toLowerCase()) ||
+              synonym.toLowerCase().includes(item.label.toLowerCase())) {
+            synonymMatches.add(item);
+          }
+        });
+      });
+    }
+  });
+  
+  // Special case handling for 'cafe'
+  if (normalizedQuery === 'cafe' || normalizedQuery.includes('cafe')) {
+    console.log("SPECIAL CASE: Searching for cafe");
+    
+    const coffeeShopItems = categoryItems.filter(item => 
+      item.label.toLowerCase() === 'coffee shops' || 
+      item.value.toLowerCase().includes('coffee shops')
+    );
+    
+    console.log("Direct coffee shop matches:", coffeeShopItems);
+    
+    if (coffeeShopItems.length > 0) {
+      return coffeeShopItems;
+    }
+  }
+  
+  const results = Array.from(synonymMatches);
+  console.log("Synonym matches found:", results.length);
+  return results;
+}
 
 export default function ExpenseForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [openCategory, setOpenCategory] = useState(false);
   const supabase = createClientSupabaseClient();
   
-  // Define categories
-  const categories = [
-    'Food',
-    'Transportation',
-    'Entertainment',
-    'Housing',
-    'Utilities',
-    'Healthcare',
-    'Shopping',
-    'Other'
-  ];
-
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
     defaultValues,
   });
+
+  // Get selected categories from form
+  const selectedCategories = form.watch('categories') || [];
+  
+  // Fix the selectedCategoryItems useMemo to safely handle potentially undefined values
+  const selectedCategoryItems = React.useMemo(() => 
+    selectedCategories
+      .filter(value => value !== undefined && value !== null) // Filter out any undefined/null values
+      .map(value => {
+        // Safely handle the split operation
+        if (typeof value !== 'string') {
+          console.warn('Invalid category value:', value);
+          return { value: String(value), label: String(value), group: 'Unknown' };
+        }
+        
+        const parts = value.split(':');
+        const group = parts[0]?.trim() || '';
+        const label = parts[1]?.trim() || group;
+        
+        return { value, label, group };
+      }),
+    [selectedCategories]
+  );
+
+  // Category input state
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [inputValue, setInputValue] = React.useState("");
+  const [filteredCategories, setFilteredCategories] = React.useState<CategoryItem[]>([]);
+
+  // Group categories by their group - also memoize this
+  const groupedCategories = React.useMemo(() => {
+    const grouped: Record<string, CategoryItem[]> = {};
+    
+    filteredCategories.forEach(item => {
+      if (!grouped[item.group]) {
+        grouped[item.group] = [];
+      }
+      grouped[item.group].push(item);
+    });
+    
+    return grouped;
+  }, [filteredCategories]);
+
+  // Handle unselect (remove) a category
+  const handleUnselect = React.useCallback((value: string) => {
+    form.setValue(
+      'categories',
+      selectedCategories.filter(cat => cat !== value),
+      { shouldValidate: true }
+    );
+  }, [form, selectedCategories]);
+
+  // Handle selection of a category item
+  const handleSelect = React.useCallback((value: string) => {
+    if (!selectedCategories.includes(value)) {
+      form.setValue(
+        'categories',
+        [...selectedCategories, value],
+        { shouldValidate: true }
+      );
+    }
+    setInputValue("");
+  }, [form, selectedCategories]);
+
+  // Handle keyboard navigation for removing items
+  const handleKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      const input = inputRef.current;
+      if (input) {
+        if (e.key === "Delete" || e.key === "Backspace") {
+          if (input.value === "" && selectedCategories.length > 0) {
+            // Remove the last item when backspace is pressed with empty input
+            handleUnselect(selectedCategories[selectedCategories.length - 1]);
+          }
+        }
+        // Close on escape
+        if (e.key === "Escape") {
+          input.blur();
+        }
+      }
+    },
+    [handleUnselect, selectedCategories]
+  );
+
+  // Update the useEffect with correct dependencies and fix the synonym search logic
+  useEffect(() => {
+    // Log for debugging
+    console.log("Searching for:", inputValue);
+    
+    if (inputValue.trim() === '') {
+      // Show all categories except selected ones
+      setFilteredCategories(
+        CATEGORY_ITEMS.filter(item => 
+          !selectedCategories.includes(item.value)
+        )
+      );
+      return;
+    }
+
+    // Use our synonym-aware search function
+    const searchResults = searchWithSynonyms(
+      inputValue, 
+      CATEGORY_ITEMS.filter(item => 
+        !selectedCategories.includes(item.value)
+      )
+    );
+    
+    console.log("Search results:", searchResults);
+    setFilteredCategories(searchResults);
+  }, [inputValue, selectedCategories, CATEGORY_ITEMS]);
 
   async function onSubmit(values: ExpenseFormValues) {
     setIsLoading(true);
@@ -80,12 +415,18 @@ export default function ExpenseForm() {
         throw new Error('You must be logged in to add an expense');
       }
       
+      // Primary category is the first in the array
+      const primaryCategory = values.categories.length > 0 
+        ? values.categories[0].split(': ')[0] 
+        : 'Other';
+      
       const { error } = await supabase.from('expenses').insert({
         amount: numericAmount,
-        description: values.description || null, // Handle empty string
-        category: values.category,
+        description: values.description || null,
+        category: primaryCategory,
+        category_details: values.categories.length > 0 ? values.categories : null,
         date: values.date.toISOString(),
-        user_id: user.id, // Add the user ID to associate this expense with the current user
+        user_id: user.id,
       });
 
       if (error) {
@@ -140,40 +481,75 @@ export default function ExpenseForm() {
 
             <FormField
               control={form.control}
-              name="category"
+              name="categories"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category</FormLabel>
+                <FormItem className="flex flex-col">
+                  <FormLabel>Categories</FormLabel>
                   <FormControl>
-                    <div className="relative border rounded-md">
-                      <select
-                        className="w-full h-9 px-3 py-2 bg-transparent appearance-none focus:outline-none"
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.value)}
-                      >
-                        <option value="" disabled>Select a category</option>
-                        {categories.map((category) => (
-                          <option key={category} value={category}>
-                            {category}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="opacity-50"
-                        >
-                          <path d="m6 9 6 6 6-6"/>
-                        </svg>
+                    <div>
+                      <div className="group rounded-md border border-input px-3 py-2 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                        <div className="flex flex-wrap gap-1">
+                          {selectedCategoryItems.map((item) => (
+                            <Badge key={item.value} variant="secondary">
+                              <span className="font-medium mr-1">{item.group}:</span>
+                              {item.label}
+                              <button
+                                className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    handleUnselect(item.value);
+                                  }
+                                }}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}
+                                onClick={() => handleUnselect(item.value)}
+                                type="button"
+                              >
+                                <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                              </button>
+                            </Badge>
+                          ))}
+                          <input
+                            type="text"
+                            ref={inputRef}
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onBlur={() => setTimeout(() => setOpenCategory(false), 200)}
+                            onFocus={() => setOpenCategory(true)}
+                            placeholder={selectedCategories.length > 0 ? "Add more categories..." : "Select categories..."}
+                            className="ml-2 flex-1 bg-transparent outline-none placeholder:text-muted-foreground border-none"
+                          />
+                        </div>
                       </div>
+                      
+                      {openCategory && inputValue.trim().length > 0 && (
+                        <div className="relative mt-2">
+                          <div className="absolute top-0 z-10 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in">
+                            {filteredCategories.length === 0 ? (
+                              <div className="py-6 text-center text-sm text-muted-foreground">
+                                No matching categories found
+                              </div>
+                            ) : (
+                              <div className="py-2">
+                                {filteredCategories.map(item => (
+                                  <div
+                                    key={item.value}
+                                    onClick={() => {
+                                      handleSelect(item.value);
+                                      setInputValue("");
+                                    }}
+                                    className="flex items-center px-2 py-1.5 text-sm cursor-pointer hover:bg-muted"
+                                  >
+                                    <span className="font-medium mr-1 opacity-70">{item.group}:</span> {item.label}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </FormControl>
                   <FormMessage />
