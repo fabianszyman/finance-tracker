@@ -10,17 +10,16 @@ export default function ImportExpensesPage() {
   return (
     <PageContainer>
       <PageHeader 
-        title="Import Expenses" 
-        subtitle="Import expenses from a CSV file"
-        action={
-          <Button asChild variant="outline">
-            <Link href="/expenses">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Expenses
-            </Link>
-          </Button>
-        }
-      />
+        heading="Import Expenses" 
+        description="Import expenses from a CSV file"
+      >
+        <Button asChild variant="outline">
+          <Link href="/expenses">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Expenses
+          </Link>
+        </Button>
+      </PageHeader>
       
       <div className="my-6">
         <CSVImportForm />
