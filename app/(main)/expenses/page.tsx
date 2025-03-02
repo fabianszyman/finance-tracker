@@ -70,23 +70,21 @@ export default function ExpensesPage() {
       <PageHeader 
         heading="Expenses" 
         description="View and manage your expenses"
-        action={
-          <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <Link href="/expenses/import">
-                <Upload className="mr-2 h-4 w-4" />
-                Import
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link href="/expenses/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Expense
-              </Link>
-            </Button>
-          </div>
-        }
       >
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/expenses/import">
+              <Upload className="mr-2 h-4 w-4" />
+              Import
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/expenses/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Expense
+            </Link>
+          </Button>
+        </div>
       </PageHeader>
 
       <DashboardSection 
