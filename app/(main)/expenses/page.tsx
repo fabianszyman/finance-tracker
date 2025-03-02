@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageContainer, PageHeader, DashboardSection, TableContainer } from '@/components/ui/page-layout';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, Upload, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { createClientSupabaseClient } from '@/lib/supabase/client';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 interface Expense {
   id: string;
@@ -69,11 +70,23 @@ export default function ExpensesPage() {
       <PageHeader 
         heading="Expenses" 
         description="View and manage your expenses"
+        action={
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/expenses/import">
+                <Upload className="mr-2 h-4 w-4" />
+                Import
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/expenses/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Expense
+              </Link>
+            </Button>
+          </div>
+        }
       >
-        <Button onClick={handleAddExpense}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Expense
-        </Button>
       </PageHeader>
 
       <DashboardSection 
@@ -143,7 +156,17 @@ export default function ExpensesPage() {
                       {expense.description || "-"}
                     </td>
                     <td className="py-3 px-4 text-right font-medium">
-                      {formatCurrency(expense.amount)}
+                      <div className={`flex items-center gap-1 ${
+                        expense.amount > 0 
+                          ? "text-green-600 font-medium" 
+                          : ""
+                      }`}>
+                        {expense.amount > 0 
+                          ? <ArrowUpRight className="h-3 w-3" /> 
+                          : <ArrowDownRight className="h-3 w-3" />
+                        }
+                        {formatCurrency(expense.amount)}
+                      </div>
                     </td>
                   </tr>
                 ))

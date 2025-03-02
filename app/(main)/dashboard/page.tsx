@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, DollarSign, Calendar, TrendingDown, TrendingUp, ArrowUpRight, CreditCard } from "lucide-react";
+import { PlusCircle, DollarSign, Calendar, TrendingDown, TrendingUp, ArrowUpRight, CreditCard, Upload } from "lucide-react";
 import Link from "next/link";
 import { 
   PageContainer, 
@@ -190,6 +190,31 @@ export default function DashboardPage() {
             />
           ))}
         </CardGrid>
+      </DashboardSection>
+      
+      {/* Quick Actions */}
+      <DashboardSection 
+        title="Quick Actions" 
+        subtitle="Common tasks"
+        className="mt-6"
+      >
+        <div className="flex gap-3 flex-wrap">
+          <Button asChild variant="outline" className="h-auto py-4 px-6">
+            <Link href="/expenses/new">
+              <PlusCircle className="h-5 w-5 mb-2 mx-auto" />
+              <span className="block text-sm">Add Expense</span>
+            </Link>
+          </Button>
+          
+          <Button asChild variant="outline" className="h-auto py-4 px-6">
+            <Link href="/expenses/import">
+              <Upload className="h-5 w-5 mb-2 mx-auto" />
+              <span className="block text-sm">Import Expenses</span>
+            </Link>
+          </Button>
+          
+          {/* Add more quick actions */}
+        </div>
       </DashboardSection>
     </PageContainer>
   );

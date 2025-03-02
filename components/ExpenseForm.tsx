@@ -22,6 +22,19 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import React from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Command as CommandPrimitive } from "cmdk";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
+
+// Add this interface near the top of your file
+interface Expense {
+  id: string;
+  amount: number;
+  description?: string;
+  category: string;
+  category_details?: string[];
+  date: string;
+  created_at?: string;
+}
 
 // Define categories
 const categories = {
@@ -280,11 +293,16 @@ function searchWithSynonyms(query: string, categoryItems: CategoryItem[]): Categ
   return results;
 }
 
-export default function ExpenseForm() {
+export default function ExpenseForm({ initialData }: { initialData?: Expense }) {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [openCategory, setOpenCategory] = useState(false);
   const supabase = createClientSupabaseClient();
+  const [isLoading, setIsLoading] = useState(false);
+  const [inputValue, setInputValue] = useState<string>("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [filteredCategories, setFilteredCategories] = useState<CategoryItem[]>(CATEGORY_ITEMS);
+  // Add state for tracking expense type
+  const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
+  const [openCategory, setOpenCategory] = useState(false);
   
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
@@ -292,9 +310,6 @@ export default function ExpenseForm() {
   });
 
   // Get selected categories from form
-  const selectedCategories = form.watch('categories') || [];
-  
-  // Fix the selectedCategoryItems useMemo to safely handle potentially undefined values
   const selectedCategoryItems = React.useMemo(() => 
     selectedCategories
       .filter(value => value !== undefined && value !== null) // Filter out any undefined/null values
@@ -316,8 +331,6 @@ export default function ExpenseForm() {
 
   // Category input state
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const [inputValue, setInputValue] = React.useState("");
-  const [filteredCategories, setFilteredCategories] = React.useState<CategoryItem[]>([]);
 
   // Group categories by their group - also memoize this
   const groupedCategories = React.useMemo(() => {
@@ -401,12 +414,37 @@ export default function ExpenseForm() {
     setFilteredCategories(searchResults);
   }, [inputValue, selectedCategories, CATEGORY_ITEMS]);
 
+  useEffect(() => {
+    if (initialData) {
+      // Set transaction type based on amount sign
+      setTransactionType(initialData.amount >= 0 ? 'income' : 'expense');
+      
+      // Initialize form values
+      form.reset({
+        amount: String(Math.abs(initialData.amount)), // Remove minus sign for display
+        description: initialData.description || '',
+        categories: initialData.category_details || [initialData.category],
+        date: new Date(initialData.date),
+      });
+    }
+  }, [initialData, form]);
+
   async function onSubmit(values: ExpenseFormValues) {
     setIsLoading(true);
     
     try {
       // Convert the amount string to a number for database storage
-      const numericAmount = parseFloat(values.amount);
+      let numericAmount = parseFloat(values.amount);
+      
+      // Apply negative sign for expenses (if not already negative)
+      if (transactionType === 'expense' && numericAmount > 0) {
+        numericAmount = -numericAmount;
+      }
+      
+      // Ensure income is positive
+      if (transactionType === 'income' && numericAmount < 0) {
+        numericAmount = Math.abs(numericAmount);
+      }
       
       // Get the current user
       const { data: { user } } = await supabase.auth.getUser();
@@ -433,28 +471,60 @@ export default function ExpenseForm() {
         throw error;
       }
 
-      toast.success('Expense added successfully');
+      toast.success(`${transactionType === 'income' ? 'Income' : 'Expense'} added successfully`);
       router.push('/expenses');
       router.refresh();
     } catch (error) {
       const pgError = error as PostgrestError;
-      toast.error(pgError.message || 'Failed to add expense');
+      toast.error(pgError.message || 'Failed to add transaction');
     } finally {
       setIsLoading(false);
     }
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Add New Expense</CardTitle>
-        <CardDescription>
-          Record a new expense in your finance tracker
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">{initialData ? 'Edit' : 'Add New'} {transactionType === 'expense' ? 'Expense' : 'Income'}</h1>
+      <p className="text-muted-foreground">
+        Record a {initialData ? 'change to your' : 'new'} {transactionType === 'expense' ? 'expense' : 'income'} in your finance tracker
+      </p>
+      
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <Tabs 
+            defaultValue="expense" 
+            className="w-full mb-6" 
+            value={transactionType}
+            onValueChange={(value) => setTransactionType(value as 'expense' | 'income')}
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="expense" className="flex items-center gap-1">
+                <ArrowDownRight className="h-3.5 w-3.5" />
+                Expense
+              </TabsTrigger>
+              <TabsTrigger value="income" className="flex items-center gap-1">
+                <ArrowUpRight className="h-3.5 w-3.5" />
+                Income
+              </TabsTrigger>
+            </TabsList>
+            
+            {/* Set a fixed min-height for the content to prevent layout shifts */}
+            <div className="min-h-[70px]">
+              <TabsContent value="expense" className="mt-2 w-full">
+                <p className="text-sm text-muted-foreground">
+                  Record a payment or purchase. Expenses will be shown as negative values.
+                </p>
+              </TabsContent>
+              
+              <TabsContent value="income" className="mt-2 w-full">
+                <p className="text-sm text-muted-foreground">
+                  Record money received such as salary, gifts, or refunds. Income will be shown as positive values.
+                </p>
+              </TabsContent>
+            </div>
+          </Tabs>
+
+          <div className="space-y-4">
             <FormField
               control={form.control}
               name="amount"
@@ -613,13 +683,20 @@ export default function ExpenseForm() {
                 </FormItem>
               )}
             />
+          </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Adding...' : 'Add Expense'}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={isLoading}
+          >
+            {isLoading ? 'Saving...' : initialData 
+              ? `Update ${transactionType === 'expense' ? 'Expense' : 'Income'}` 
+              : `Add ${transactionType === 'expense' ? 'Expense' : 'Income'}`
+            }
+          </Button>
+        </form>
+      </Form>
+    </div>
   );
 } 
