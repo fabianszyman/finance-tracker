@@ -1,14 +1,10 @@
 import { createClientSupabaseClient } from "@/lib/supabase/client";
 import ExpenseForm from "@/components/ExpenseForm";
-import { Expense } from "@/types"; // Make sure you have this type defined
 
-interface EditExpensePageProps {
-  params: {
-    id: string;
-  };
-}
-
-export default async function EditExpensePage({ params }: EditExpensePageProps) {
+// Use the Next.js App Router dynamic route pattern with no custom types
+export default async function EditExpensePage({
+  params,
+}: any) {
   // Fetch the expense data inside the component
   const supabase = createClientSupabaseClient();
   const { data: expense } = await supabase
