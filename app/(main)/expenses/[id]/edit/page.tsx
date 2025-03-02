@@ -1,7 +1,17 @@
-import { createClientSupabaseClient } from "@supabase/auth-helpers-nextjs";
+import { createClientSupabaseClient } from "@/lib/supabase/client";
 import ExpenseForm from "@/components/ExpenseForm";
-import { useParams } from "next/navigation";
+import { Params } from "next/dist/shared/lib/router/utils/route-matcher";
 
-const { data: expense } = await createClientSupabaseClient().from('expenses').select('*').eq('id', params.id).single();
+// Make it a proper async function component
+export default async function EditExpensePage({ params }: { params: { id: string } }) {
+  // Fetch the expense data inside the component
+  const supabase = createClientSupabaseClient();
+  const { data: expense } = await supabase
+    .from('expenses')
+    .select('*')
+    .eq('id', params.id)
+    .single();
 
-return <ExpenseForm initialData={expense} />; 
+  // Return the component
+  return <ExpenseForm initialData={expense} />;
+} 
