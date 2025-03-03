@@ -66,7 +66,7 @@ export default function Navbar() {
     <div className="border-b">
       <div className="flex h-16 items-center px-4 sm:px-6 lg:px-8 mx-auto w-full max-w-7xl">
         <Link href="/dashboard" className="font-bold text-xl mr-4 sm:mr-6">
-          FinanceTracker
+          FinanceAI
         </Link>
         
         <nav className="flex items-center space-x-2 sm:space-x-4 lg:space-x-6 mx-2 sm:mx-6 overflow-x-auto">

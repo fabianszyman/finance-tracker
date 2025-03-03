@@ -26,23 +26,19 @@ export function PageHeader({
   description,
   children,
 }: {
-  heading: string;
+  heading?: string;
   description?: string;
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-y-3">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{heading}</h1>
-        {description && (
-          <p className="text-sm text-muted-foreground md:text-base">{description}</p>
-        )}
-      </div>
-      {children && (
-        <div className="flex flex-shrink-0 items-center self-end sm:self-auto gap-2">
-          {children}
+    <div className="flex flex-col space-y-2 pb-4 md:pb-6">
+      <div className="flex items-center justify-between">
+        <div>
+          {heading && <h1 className="text-2xl font-bold tracking-tight">{heading}</h1>}
+          {description && <p className="text-muted-foreground">{description}</p>}
         </div>
-      )}
+        {children && <div className="flex items-center space-x-2">{children}</div>}
+      </div>
     </div>
   );
 }

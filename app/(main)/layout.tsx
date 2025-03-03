@@ -24,7 +24,7 @@ function SiteHeader() {
       
       <div className="flex items-center gap-2">
         {isMobile && <Separator orientation="vertical" className="h-6" />}
-        <span className="font-bold text-xl">FinanceTracker</span>
+        <span className="font-bold text-xl">FinanceAI</span>
       </div>
     </header>
   );
@@ -45,7 +45,7 @@ export default function MainLayout({
             <SidebarInset className="flex-1 overflow-auto">
               <main className="flex-1">
                 <div className="mx-auto w-full p-4 md:p-6 lg:p-8">
-                  <div className="mx-auto max-w-4xl">
+                  <div className="mx-auto max-w-6xl">
                     {children}
                   </div>
                 </div>

@@ -7,7 +7,7 @@ import ClientLayout from '@/components/ClientLayout';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Next.js + Supabase App',
+  title: 'FinanceAI',
   description: 'A simple app with Next.js and Supabase',
 };
 

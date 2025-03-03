@@ -24,17 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Command as CommandPrimitive } from "cmdk";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
-
-// Add this interface near the top of your file
-interface Expense {
-  id: string;
-  amount: number;
-  description?: string;
-  category: string;
-  category_details?: string[];
-  date: string;
-  created_at?: string;
-}
+import { Expense } from '@/lib/types';
 
 // Define categories
 const categories = {
@@ -348,21 +338,17 @@ export default function ExpenseForm({ initialData }: { initialData?: Expense }) 
 
   // Handle unselect (remove) a category
   const handleUnselect = React.useCallback((value: string) => {
-    form.setValue(
-      'categories',
-      selectedCategories.filter(cat => cat !== value),
-      { shouldValidate: true }
-    );
+    const newCategories = selectedCategories.filter(cat => cat !== value);
+    form.setValue('categories', newCategories, { shouldValidate: true });
+    setSelectedCategories(newCategories);
   }, [form, selectedCategories]);
 
   // Handle selection of a category item
   const handleSelect = React.useCallback((value: string) => {
     if (!selectedCategories.includes(value)) {
-      form.setValue(
-        'categories',
-        [...selectedCategories, value],
-        { shouldValidate: true }
-      );
+      const newCategories = [...selectedCategories, value];
+      form.setValue('categories', newCategories, { shouldValidate: true });
+      setSelectedCategories(newCategories);
     }
     setInputValue("");
   }, [form, selectedCategories]);
@@ -419,15 +405,37 @@ export default function ExpenseForm({ initialData }: { initialData?: Expense }) 
       // Set transaction type based on amount sign
       setTransactionType(initialData.amount >= 0 ? 'income' : 'expense');
       
+      // Initialize categories from initialData
+      const categories = initialData.category_details || [initialData.category];
+      
       // Initialize form values
       form.reset({
-        amount: String(Math.abs(initialData.amount)), // Remove minus sign for display
+        amount: String(Math.abs(initialData.amount)), 
         description: initialData.description || '',
-        categories: initialData.category_details || [initialData.category],
+        categories: categories,
         date: new Date(initialData.date),
       });
+      
+      // Also set the local state
+      setSelectedCategories(categories);
     }
   }, [initialData, form]);
+
+  // Near the top of your component, add a useEffect to sync form values to state:
+  useEffect(() => {
+    // Watch for form value changes and update selectedCategories
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'categories' || !name) {
+        // Only update if the categories field changed or it's the initial setup
+        const formCategories = form.getValues('categories');
+        if (formCategories && Array.isArray(formCategories)) {
+          setSelectedCategories(formCategories);
+        }
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   async function onSubmit(values: ExpenseFormValues) {
     setIsLoading(true);
@@ -458,25 +466,53 @@ export default function ExpenseForm({ initialData }: { initialData?: Expense }) 
         ? values.categories[0].split(': ')[0] 
         : 'Other';
       
-      const { error } = await supabase.from('expenses').insert({
+      // Prepare data payload
+      const expenseData = {
         amount: numericAmount,
         description: values.description || null,
         category: primaryCategory,
         category_details: values.categories.length > 0 ? values.categories : null,
         date: values.date.toISOString(),
         user_id: user.id,
-      });
+      };
+      
+      let error;
+      
+      // If we have initialData, this is an edit operation
+      if (initialData?.id) {
+        // Update existing expense
+        const { error: updateError } = await supabase
+          .from('expenses')
+          .update(expenseData)
+          .eq('id', initialData.id);
+          
+        error = updateError;
+        
+        if (!updateError) {
+          toast.success(`${transactionType === 'income' ? 'Income' : 'Expense'} updated successfully`);
+        }
+      } else {
+        // Insert new expense
+        const { error: insertError } = await supabase
+          .from('expenses')
+          .insert(expenseData);
+          
+        error = insertError;
+        
+        if (!insertError) {
+          toast.success(`${transactionType === 'income' ? 'Income' : 'Expense'} added successfully`);
+        }
+      }
 
       if (error) {
         throw error;
       }
 
-      toast.success(`${transactionType === 'income' ? 'Income' : 'Expense'} added successfully`);
       router.push('/expenses');
       router.refresh();
     } catch (error) {
       const pgError = error as PostgrestError;
-      toast.error(pgError.message || 'Failed to add transaction');
+      toast.error(pgError.message || 'Failed to save transaction');
     } finally {
       setIsLoading(false);
     }
