@@ -286,173 +286,47 @@ export default function CSVImportForm() {
     }
   };
 
-  // Update the parseDate function to better handle European date formats with 2-digit years
-  const parseDate = (dateString: string): Date | null => {
-    if (!dateString || typeof dateString !== 'string' || dateString.trim() === '') return null;
+  // Date parsing function
+  const parseDate = (value: string): Date | null => {
+    if (!value) return null;
     
-    // First try to extract dates from strings that might contain them
-    const datePatterns = [
-      // DD.MM.YY format (European with 2-digit year)
-      /(\d{1,2})\.(\d{1,2})\.(\d{2})(?!\d)/,
-      // DD.MM.YYYY format (European with 4-digit year)
-      /(\d{1,2})\.(\d{1,2})\.(\d{4})/,
-      // Extract dates like 01.03.25-31.03.25 (take the first date)
-      /(\d{1,2})\.(\d{1,2})\.(\d{2})[-\/]/,
-      // Date embedded in text with format like "17.02.2025"
-      /\b(\d{1,2})\.(\d{1,2})\.(\d{2,4})\b/,
-      // Standard date formats
-      /(\d{4})-(\d{1,2})-(\d{1,2})/,
-      /(\d{1,2})\/(\d{1,2})\/(\d{4})/,
-      /(\d{1,2})-(\d{1,2})-(\d{4})/
-    ];
+    // Clean up the value
+    const cleaned = value.trim();
+    if (!cleaned) return null;
     
-    // Check for embedded dates in the string
-    for (const pattern of datePatterns) {
-      const match = dateString.match(pattern);
-      if (match) {
-        // For DD.MM.YY or DD.MM.YYYY format
-        if (match[0].includes('.')) {
-          const day = parseInt(match[1], 10);
-          const month = parseInt(match[2], 10) - 1; // JS months are 0-based
-          
-          // Handle two-digit years specially
-          let year: number;
-          if (match[3] && match[3].length === 2) {
-            // For 2-digit years, assume:
-            // 00-49 → 2000-2049
-            // 50-99 → 1950-1999
-            const twoDigitYear = parseInt(match[3], 10);
-            year = twoDigitYear < 50 ? 2000 + twoDigitYear : 1900 + twoDigitYear;
-          } else {
-            year = parseInt(match[3], 10);
-          }
-          
-          // Validate the date components
-          if (day > 0 && day <= 31 && month >= 0 && month <= 11 && year >= 1900) {
-            const date = new Date(year, month, day);
-            // Final validation - ensures Feb 30 doesn't pass as valid, etc.
-            if (isValid(date) && date.getDate() === day) return date;
-          }
-        }
-        // For YYYY-MM-DD format
-        else if (match[0].includes('-') && match[0].indexOf('-') === 4) {
-          const date = parse(match[0], 'yyyy-MM-dd', new Date());
-          if (isValid(date)) return date;
-        }
-        // For MM/DD/YYYY format
-        else if (match[0].includes('/')) {
-          const date = parse(match[0], 'MM/dd/yyyy', new Date());
-          if (isValid(date)) return date;
-        }
-      }
+    // Try common date formats based on the selected format or auto-detect
+    if (dateFormat === "auto" || dateFormat === "yyyy-MM-dd") {
+      // Try ISO format (yyyy-MM-dd)
+      const isoDate = parse(cleaned, 'yyyy-MM-dd', new Date());
+      if (isValid(isoDate)) return isoDate;
     }
     
-    // Try parsing directly with explicit format strings
+    if (dateFormat === "auto" || dateFormat === "MM/dd/yyyy") {
+      // Try US format (MM/dd/yyyy)
+      const usDate = parse(cleaned, 'MM/dd/yyyy', new Date());
+      if (isValid(usDate)) return usDate;
+    }
+    
+    if (dateFormat === "auto" || dateFormat === "dd/MM/yyyy") {
+      // Try EU format (dd/MM/yyyy)
+      const euDate = parse(cleaned, 'dd/MM/yyyy', new Date());
+      if (isValid(euDate)) return euDate;
+    }
+    
+    // Try other common formats
     const formats = [
-      // German/European formats
-      'dd.MM.yy',  // Add explicit support for DD.MM.YY
+      'yyyy.MM.dd',
       'dd.MM.yyyy',
-      // ISO formats
-      'yyyy-MM-dd',
-      // US formats
-      'MM/dd/yyyy',
-      // Other common formats
-      'dd/MM/yyyy',
+      'yyyy-MM-dd HH:mm:ss',
+      'MM-dd-yyyy',
+      'dd-MM-yyyy',
+      'MMM d, yyyy',
+      'MMMM d, yyyy'
     ];
     
-    // If user selected a specific format, try that first
-    if (dateFormat !== "auto") {
-      const parsedDate = parse(dateString, dateFormat, new Date());
+    for (const fmt of formats) {
+      const parsedDate = parse(cleaned, fmt, new Date());
       if (isValid(parsedDate)) return parsedDate;
-    }
-    
-    // Try each format
-    for (const format of formats) {
-      try {
-        const parsedDate = parse(dateString, format, new Date());
-        if (isValid(parsedDate)) return parsedDate;
-      } catch (e) {
-        // Continue trying other formats
-      }
-    }
-    
-    // Extract any date-like patterns as last resort
-    // This is especially helpful for dates embedded in descriptions
-    const anyDateMatch = dateString.match(/\b(\d{1,2})[.-\/](\d{1,2})[.-\/](\d{2,4})\b/);
-    if (anyDateMatch) {
-      try {
-        // Attempt to parse based on detected separators
-        const separator = anyDateMatch[0].includes('.') ? '.' : 
-                          anyDateMatch[0].includes('/') ? '/' : '-';
-        
-        const parts = anyDateMatch[0].split(separator);
-        if (parts.length === 3) {
-          // Assume European DD.MM.YY format when using dot separator
-          if (separator === '.') {
-            const day = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10) - 1;
-            let year = parseInt(parts[2], 10);
-            if (parts[2].length === 2) {
-              year = year < 50 ? 2000 + year : 1900 + year;
-            }
-            const date = new Date(year, month, day);
-            if (isValid(date)) return date;
-          }
-        }
-      } catch (e) {
-        // Failed to parse
-      }
-    }
-    
-    // Try built-in date parsing as last resort
-    try {
-      const dateObj = new Date(dateString);
-      if (isValid(dateObj)) return dateObj;
-    } catch (e) {
-      // If all else fails, return null
-    }
-    
-    // Add this pattern specifically for German banking date formats
-    const germanBankingDatePattern = /(\d{2})\.(\d{2})\.(\d{2,4})/;
-
-    // Consider adding this inside your parseDate function
-    if (dateString.match(germanBankingDatePattern)) {
-      const dateParts = dateString.split('.');
-      if (dateParts.length === 3) {
-        const day = parseInt(dateParts[0], 10);
-        const month = parseInt(dateParts[1], 10) - 1;
-        let year = parseInt(dateParts[2], 10);
-        
-        // Handle 2-digit years
-        if (dateParts[2].length === 2) {
-          year = year < 50 ? 2000 + year : 1900 + year;
-        }
-        
-        const date = new Date(year, month, day);
-        if (isValid(date)) {
-          console.log(`Successfully parsed German date: ${dateString} → ${date.toISOString()}`);
-          return date;
-        }
-      }
-    }
-    
-    // Add this to the parseDate function to directly handle the DD.MM.YY format
-    const germanDateRegex = /^(\d{1,2})\.(\d{1,2})\.(\d{2})$/;
-    const match = dateString.match(germanDateRegex);
-    if (match) {
-      const day = parseInt(match[1], 10);
-      const month = parseInt(match[2], 10) - 1; // JS months are 0-based
-      let year = parseInt(match[3], 10);
-      
-      // Handle two-digit year
-      year = year < 50 ? 2000 + year : 1900 + year;
-      
-      const date = new Date(year, month, day);
-      // Final validation
-      if (isValid(date) && date.getDate() === day) {
-        console.log(`Direct German date pattern matched: ${dateString} → ${date.toISOString()}`);
-        return date;
-      }
     }
     
     return null;
@@ -553,7 +427,7 @@ export default function CSVImportForm() {
       }
       
       // Parse date
-      let date = null;
+      let date: Date | null = null;
       
       // First try the direct date value
       if (rawDateValue) {
