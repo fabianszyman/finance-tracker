@@ -8,7 +8,7 @@ import { createClientSupabaseClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 import { z } from 'zod';
-import { expenseFormSchema } from '@/lib/validations/expense';
+import { expenseFormSchema, ColumnMapping } from '@/lib/validations/expense';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
