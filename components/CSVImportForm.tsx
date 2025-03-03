@@ -36,7 +36,7 @@ import { AlertCircle } from 'lucide-react';
 const NOT_MAPPED = "NOT_MAPPED";
 
 // CSV Import steps
-type ImportStep = 'upload' | 'map' | 'preview' | 'import';
+type ImportStep = 'upload' | 'mapping' | 'map' | 'preview' | 'import';
 
 export default function CSVImportForm() {
   const router = useRouter();
